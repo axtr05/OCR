@@ -34,15 +34,18 @@ pip install pytesseract opencv-python pillow numpy
 ```
 
 ### Project Folder Structure
+```
 OCR_Project
-│
 ├── ocr.py
 ├── sample.jpg
 └── extracted_text.txt
+```
+
+
+Add a sample.jpg image inside the project folder.
 
 ### Run the Project
 
-Add a sample.jpg image inside the project folder.
 
 ```bash
 python ocr.py
