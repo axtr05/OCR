@@ -13,6 +13,7 @@ Verify installation:
 
 ```bash
 tesseract --version
+'''
 
 If the command fails:
 
