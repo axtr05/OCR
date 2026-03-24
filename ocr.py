@@ -1,46 +1,70 @@
 import cv2
 import pytesseract
 import numpy as np
+import os
+from pdf2image import convert_from_path
 
-# Path to tesseract executable (change if needed)
+# 🔴 SET PATHS CORRECTLY
 pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+POPPLER_PATH = r"C:\poppler\poppler-25.12.0\Library\bin"   # ✅ FIXED
 
-# Read input image
-image = cv2.imread("sample.jpg")
 
-# Check if image loaded
-if image is None:
-    print("Error: Image not found")
-    exit()
+def process_image(image):
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    blur = cv2.GaussianBlur(gray, (5, 5), 0)
+    _, thresh = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    return thresh
 
-# Convert to grayscale
-gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
-# Remove noise using Gaussian Blur
-blur = cv2.GaussianBlur(gray, (5, 5), 0)
+def extract_text_with_layout(image):
+    processed = process_image(image)
 
-# Apply thresholding
-_, thresh = cv2.threshold(
-    blur, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU
-)
+    return pytesseract.image_to_string(
+        processed,
+        config="--oem 3 --psm 4 preserve_interword_spaces=1"
+    )
 
-# Extract text using OCR
-text = pytesseract.image_to_string(thresh, lang="eng")
 
-# Post-processing
-clean_text = text.replace("\n", " ").strip()
+def handle_file(file_path):
+    ext = os.path.splitext(file_path)[1].lower()
 
-# Save output to file
-with open("extracted_text.txt", "w", encoding="utf-8") as file:
-    file.write(clean_text)
+    # 🟢 IMAGE FILES
+    if ext in [".png", ".jpg", ".jpeg", ".bmp"]:
+        image = cv2.imread(file_path)
+        if image is None:
+            return "Error: Image not loaded"
 
-# Display results
-print("----- Extracted Text -----")
-print(clean_text)
+        return extract_text_with_layout(image)
 
-# Show images (optional for demo)
-cv2.imshow("Original Image", image)
-cv2.imshow("Processed Image", thresh)
-cv2.waitKey(0)
-cv2.destroyAllWindows()
-x
+    # 🔵 PDF FILES
+    elif ext == ".pdf":
+        try:
+            pages = convert_from_path(
+                file_path,
+                poppler_path=POPPLER_PATH
+            )
+        except Exception as e:
+            return f"PDF Error: {str(e)}"
+
+        all_text = ""
+        for page in pages:
+            img = np.array(page)
+            img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+            all_text += extract_text_with_layout(img) + "\n"
+
+        return all_text.strip()
+
+    else:
+        return f"Unsupported file type: {ext}"
+
+
+# ✅ CLI MODE
+if __name__ == "__main__":
+    file_path = input("Enter file path: ")
+    text = handle_file(file_path)
+
+    with open("extracted_text.txt", "w", encoding="utf-8") as f:
+        f.write(text)
+
+    print("----- Extracted Text -----")
+    print(text)
